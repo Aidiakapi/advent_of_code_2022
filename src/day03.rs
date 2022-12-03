@@ -21,28 +21,28 @@ fn pt1(backpacks: &[&[u8]]) -> Result<u32> {
         .iter()
         .map(|backpack| {
             let (section1, section2) = backpack.split_at(backpack.len() / 2);
-            let used = backpack_to_bitset(section1);
-            for &letter in section2 {
-                let index = letter_to_index(letter);
-                if used & 1 << index != 0 {
-                    return Ok(index as u32 + 1);
-                }
+            let overlap = backpack_to_bitset(section1) & backpack_to_bitset(section2);
+            match overlap.count_ones() {
+                0 => Err(Error::InvalidInput("no common item type")),
+                1 => Ok(overlap.trailing_zeros() + 1),
+                _ => Err(Error::InvalidInput("multiple common item types")),
             }
-            Err(Error::InvalidInput(
-                "no duplicate item type between bag sections",
-            ))
         })
         .sum()
 }
 
-fn pt2(backpacks: &[&[u8]]) -> u32 {
+fn pt2(backpacks: &[&[u8]]) -> Result<u32> {
     backpacks
         .iter()
         .map(|backpack| backpack_to_bitset(*backpack))
         .tuples()
         .map(|(s1, s2, s3)| {
             let overlap = s1 & s2 & s3;
-            overlap.trailing_zeros() + 1
+            match overlap.count_ones() {
+                0 => Err(Error::InvalidInput("no overlapping item types")),
+                1 => Ok(overlap.trailing_zeros() + 1),
+                _ => Err(Error::InvalidInput("multiple overlapping item types")),
+            }
         })
         .sum()
 }
