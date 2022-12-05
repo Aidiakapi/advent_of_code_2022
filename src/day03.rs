@@ -34,7 +34,7 @@ fn pt1(backpacks: &[&[u8]]) -> Result<u32> {
 fn pt2(backpacks: &[&[u8]]) -> Result<u32> {
     backpacks
         .iter()
-        .map(|backpack| backpack_to_bitset(*backpack))
+        .map(|backpack| backpack_to_bitset(backpack))
         .tuples()
         .map(|(s1, s2, s3)| {
             let overlap = s1 & s2 & s3;
