@@ -22,8 +22,8 @@ fn pts<const REVERSE: bool>(input: &Input) -> Result<AString> {
             .unwrap();
         let count = mv.count as usize;
         to.extend(from.drain(from.len() - count..));
-        let target_range = to.len() - count..;
         if REVERSE {
+            let target_range = to.len() - count..;
             to[target_range].reverse();
         }
     }
