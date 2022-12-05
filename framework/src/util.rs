@@ -23,3 +23,27 @@ pub fn init_array<T, const N: usize, F: FnMut(usize) -> T>(mut f: F) -> [T; N] {
 
     unsafe { MaybeUninit::array_assume_init(ManuallyDrop::take(&mut state.array)) }
 }
+
+pub trait VecExt<T> {
+    fn get_two_mut(&mut self, a: usize, b: usize) -> Option<(&mut T, &mut T)>;
+}
+
+impl<T> VecExt<T> for Vec<T> {
+    fn get_two_mut(&mut self, a: usize, b: usize) -> Option<(&mut T, &mut T)> {
+        if a >= self.len() || b >= self.len() {
+            return None;
+        }
+        use std::cmp::Ordering::*;
+        match a.cmp(&b) {
+            Less => {
+                let (n, m) = self.split_at_mut(b);
+                Some((&mut n[a], &mut m[0]))
+            }
+            Equal => None,
+            Greater => {
+                let (n, m) = self.split_at_mut(a);
+                Some((&mut m[0], &mut n[b]))
+            }
+        }
+    }
+}

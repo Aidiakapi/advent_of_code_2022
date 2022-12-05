@@ -3,12 +3,14 @@ mod common;
 pub mod error;
 mod multi;
 pub mod numbers;
+mod util;
 
 pub use combi::ParserCombiExt;
 pub use common::{any, digit, pattern, token};
 pub use error::{ParseError, ParseResult};
 pub use multi::{take_while, ParserMultiExt};
 pub use numbers::number;
+pub use util::AStrExt;
 
 pub trait Parser<'s> {
     type Output: 's;
