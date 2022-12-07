@@ -1,8 +1,4 @@
-use std::{
-    fmt::Debug,
-    marker::PhantomData,
-    mem::{swap, MaybeUninit},
-};
+use std::{fmt::Debug, marker::PhantomData};
 
 use super::*;
 
@@ -242,39 +238,13 @@ impl<'s, P: Parser<'s>, const N: usize> Parser<'s> for Many<P, N> {
     type Output = [P::Output; N];
 
     fn parse(&self, input: &'s [u8]) -> ParseResult<'s, Self::Output> {
-        struct PartiallyInit<T, const N: usize> {
-            memory: [MaybeUninit<T>; N],
-            count: usize,
-        }
-
-        impl<T, const N: usize> Drop for PartiallyInit<T, N> {
-            fn drop(&mut self) {
-                for i in (0..self.count).rev() {
-                    unsafe {
-                        self.memory[i].assume_init_drop();
-                    }
-                }
-            }
-        }
-
-        let mut partially_init = PartiallyInit::<P::Output, N> {
-            memory: MaybeUninit::uninit_array(),
-            count: 0,
-        };
-
         let mut remainder = input;
-        while partially_init.count < N {
-            let (value, new_remainder) = self.parser.parse(remainder)?;
+        crate::util::init_array(|_| {
+            let (result, new_remainder) = self.parser.parse(remainder)?;
             remainder = new_remainder;
-            partially_init.memory[partially_init.count].write(value);
-            partially_init.count += 1;
-        }
-
-        let result = unsafe {
-            let mut memory = MaybeUninit::uninit_array();
-            swap(&mut memory, &mut partially_init.memory);
-            MaybeUninit::array_assume_init(memory)
-        };
-        Ok((result, remainder))
+            Ok(result)
+        })
+        .map(|array| (array, remainder))
+        .map_err(|(e, _)| (e, input))
     }
 }
