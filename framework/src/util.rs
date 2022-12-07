@@ -1,34 +1,43 @@
-use std::mem::{ManuallyDrop, MaybeUninit};
+use std::mem::MaybeUninit;
 
-pub fn init_array<T, const N: usize, F: FnMut(usize) -> T>(mut f: F) -> [T; N] {
-    struct InitState<T, const N: usize> {
-        array: ManuallyDrop<[MaybeUninit<T>; N]>,
-        index: usize,
+pub fn init_array<T, E, const N: usize, F: FnMut(usize) -> Result<T, E>>(
+    mut f: F,
+) -> Result<[T; N], E> {
+    struct DropGuard<'r, T, const N: usize> {
+        result: &'r mut [MaybeUninit<T>; N],
+        initialized_count: usize,
     }
-    impl<T, const N: usize> Drop for InitState<T, N> {
+
+    impl<T, const N: usize> Drop for DropGuard<'_, T, N> {
         fn drop(&mut self) {
-            for i in 0..self.index {
-                unsafe { self.array[i].assume_init_drop() }
+            for i in (0..self.initialized_count).rev() {
+                unsafe {
+                    self.result[i].assume_init_drop();
+                }
             }
         }
     }
-    let mut state = InitState::<T, N> {
-        array: ManuallyDrop::new(MaybeUninit::uninit_array()),
-        index: 0,
+
+    let mut result = MaybeUninit::<T>::uninit_array::<N>();
+    let mut drop_guard = DropGuard {
+        result: &mut result,
+        initialized_count: 0,
     };
-    while state.index < N {
-        state.array[state.index].write(f(state.index));
-        state.index += 1;
+
+    for i in 0..N {
+        drop_guard.result[i].write(f(i)?);
+        drop_guard.initialized_count += 1;
     }
 
-    unsafe { MaybeUninit::array_assume_init(ManuallyDrop::take(&mut state.array)) }
+    std::mem::forget(drop_guard);
+    Ok(unsafe { MaybeUninit::array_assume_init(result) })
 }
 
-pub trait VecExt<T> {
+pub trait SliceExt<T> {
     fn get_two_mut(&mut self, a: usize, b: usize) -> Option<(&mut T, &mut T)>;
 }
 
-impl<T> VecExt<T> for Vec<T> {
+impl<T> SliceExt<T> for [T] {
     fn get_two_mut(&mut self, a: usize, b: usize) -> Option<(&mut T, &mut T)> {
         if a >= self.len() || b >= self.len() {
             return None;

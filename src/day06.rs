@@ -18,7 +18,7 @@ fn pts<const N: usize>(input: &[u8]) -> Result<usize> {
         }
         i += 1;
     }
-    return Err(Error::NoSolution);
+    Err(Error::NoSolution)
 }
 
 // The following solution always run in O(n), instead of a worst case O(n * w).
@@ -63,7 +63,7 @@ fn pt2(input: &[u8]) -> Result<usize> {
 
 fn parse(mut input: &[u8]) -> Result<&[u8]> {
     input = input.trim_ascii_end();
-    if input.iter().all(|&c| c >= b'a' && c <= b'z') {
+    if input.iter().all(|c| matches!(c, b'a'..=b'z')) {
         Ok(input)
     } else {
         Err(Error::InvalidInput("invalid characters in input"))

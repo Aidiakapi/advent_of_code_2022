@@ -4,13 +4,16 @@ fn pt1(elves: &[Vec<u32>]) -> u32 {
     elves.iter().map(|elf| elf.iter().sum()).max().unwrap()
 }
 
-fn pt2(elves: &[Vec<u32>]) -> u32 {
-    elves
-        .iter()
-        .map(|elf| elf.iter().sum::<u32>())
-        .sorted()
-        .skip(elves.len() - 3)
-        .sum()
+fn pt2(elves: &[Vec<u32>]) -> AddOutput<[u32; 3]> {
+    AddOutput(
+        elves
+            .iter()
+            .map(|elf| elf.iter().sum::<u32>())
+            .sorted()
+            .skip(elves.len() - 3)
+            .collect_array()
+            .unwrap(),
+    )
 }
 
 fn parse(input: &[u8]) -> Result<Vec<Vec<u32>>> {
@@ -38,5 +41,5 @@ tests! {
 10000";
 
     test_pt!(parse, pt1, EXAMPLE => 24000);
-    test_pt!(parse, pt2, EXAMPLE => 45000);
+    test_pt!(parse, pt2, EXAMPLE => AddOutput([10000, 11000, 24000]));
 }

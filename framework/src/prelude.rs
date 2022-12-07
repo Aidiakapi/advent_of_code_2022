@@ -7,5 +7,5 @@ pub use crate::outputs::*;
 pub use crate::parsers;
 pub use crate::result::Result;
 pub use crate::tests;
-pub use crate::util::{self, VecExt};
+pub use crate::util::{self, SliceExt};
 pub use crate::vecs::*;

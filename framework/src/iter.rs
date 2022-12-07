@@ -49,6 +49,19 @@ pub trait IteratorExt: Iterator {
             None => Unique(common),
         }
     }
+
+    fn next_array<const N: usize>(&mut self) -> Option<[Self::Item; N]> {
+        crate::util::init_array(|_| self.next().ok_or(())).ok()
+    }
+
+    fn collect_array<const N: usize>(&mut self) -> Option<[Self::Item; N]> {
+        let result = self.next_array()?;
+        if self.next().is_some() {
+            None
+        } else {
+            Some(result)
+        }
+    }
 }
 
 impl<T: Iterator> IteratorExt for T {}
