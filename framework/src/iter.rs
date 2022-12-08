@@ -64,7 +64,15 @@ pub trait IteratorExt: Iterator {
     }
 }
 
-impl<T: Iterator> IteratorExt for T {}
+impl<T: Iterator + ?Sized> IteratorExt for T {}
+
+pub trait SizedIteratorExt: Iterator + Sized {
+    fn take_while_map<F>(self, map_fn: F) -> TakeWhileNext<Self, F> {
+        TakeWhileNext { iter: self, map_fn }
+    }
+}
+
+impl<T: Iterator + Sized> SizedIteratorExt for T {}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DistinctResult<T> {
@@ -83,4 +91,21 @@ pub struct Distinct<T> {
     pub index: usize,
     pub common: T,
     pub distinct: T,
+}
+
+pub struct TakeWhileNext<I, F> {
+    iter: I,
+    map_fn: F,
+}
+
+impl<I, F, O> Iterator for TakeWhileNext<I, F>
+where
+    I: Iterator,
+    F: FnMut(I::Item) -> Option<O>,
+{
+    type Item = O;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().and_then(&mut self.map_fn)
+    }
 }

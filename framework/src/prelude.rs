@@ -2,7 +2,7 @@ pub use crate::astr::{AStr, AString};
 pub use crate::error::Error;
 pub use crate::graph;
 pub use crate::grid::VecGrid;
-pub use crate::iter::*;
+pub use crate::iter::{IteratorExt, SizedIteratorExt, Distinct, DistinctResult};
 pub use crate::offsets::{Neighbor, Neighbors, NeighborsAlong, Offset};
 pub use crate::outputs::*;
 pub use crate::parsers;
