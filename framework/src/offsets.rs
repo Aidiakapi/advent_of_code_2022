@@ -102,6 +102,33 @@ impl<T: Clone + Neighbor, const N: usize> Iterator for NeighborIter<T, N> {
     }
 }
 
+pub trait NeighborsAlong: Neighbor + Clone {
+    fn neighbors_along(self, direction: Offset) -> NeighborsAlongIter<Self> {
+        NeighborsAlongIter {
+            value: Some(self),
+            direction,
+        }
+    }
+}
+
+impl<T: Neighbor + Clone> NeighborsAlong for T {}
+
+pub struct NeighborsAlongIter<T> {
+    value: Option<T>,
+    direction: Offset,
+}
+
+impl<T: Neighbor + Clone> Iterator for NeighborsAlongIter<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(value) = self.value.clone() {
+            self.value = value.neighbor(self.direction);
+        }
+        self.value.clone()
+    }
+}
+
 impl<T: CompatibleNumber> Neighbor for Vec2<T> {
     fn neighbor(self, offset: Offset) -> Option<Self> {
         let one = T::one();

@@ -18,6 +18,10 @@ pub enum ParseError {
     TokenDoesNotMatch,
     #[error("unexpected char")]
     UnexpectedChar,
+    #[error("a cell was parsed that is beyond established width of the grid")]
+    GridCellAfterEndOfRowReached,
+    #[error("a row was incomplete")]
+    GridIncompleteRow,
     #[error("{0}")]
     Custom(&'static str),
 }

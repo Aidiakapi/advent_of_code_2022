@@ -10,6 +10,7 @@
 pub mod astr;
 pub mod error;
 pub mod graph;
+pub mod grid;
 pub mod inputs;
 pub mod iter;
 pub mod offsets;
