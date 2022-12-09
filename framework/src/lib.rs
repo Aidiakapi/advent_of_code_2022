@@ -4,6 +4,7 @@
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(negative_impls)]
+#![feature(slice_split_at_unchecked)]
 #![feature(stmt_expr_attributes)]
 #![feature(trait_alias)]
 

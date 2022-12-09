@@ -1,3 +1,4 @@
+use crate::iter::LendingIterator;
 use std::mem::MaybeUninit;
 
 pub fn init_array<T, E, const N: usize, F: FnMut(usize) -> Result<T, E>>(
@@ -35,6 +36,7 @@ pub fn init_array<T, E, const N: usize, F: FnMut(usize) -> Result<T, E>>(
 
 pub trait SliceExt<T> {
     fn get_two_mut(&mut self, a: usize, b: usize) -> Option<(&mut T, &mut T)>;
+    fn windows_mut<const N: usize>(&mut self) -> WindowsMut<'_, T, N>;
 }
 
 impl<T> SliceExt<T> for [T] {
@@ -54,5 +56,31 @@ impl<T> SliceExt<T> for [T] {
                 Some((&mut m[0], &mut n[b]))
             }
         }
+    }
+
+    fn windows_mut<const N: usize>(&mut self) -> WindowsMut<'_, T, N> {
+        WindowsMut {
+            slice: self,
+            index: 0,
+        }
+    }
+}
+
+pub struct WindowsMut<'s, T, const N: usize> {
+    slice: &'s mut [T],
+    index: usize,
+}
+
+impl<'s, T: 's, const N: usize> LendingIterator for WindowsMut<'s, T, N> {
+    type Item<'e> = &'e mut [T; N] where Self: 'e, T: 'e;
+
+    fn next(&mut self) -> Option<Self::Item<'_>> {
+        let index = self.index;
+        if index + N > self.slice.len() {
+            return None;
+        }
+        self.index = index + 1;
+
+        unsafe { Some(&mut *(self.slice.as_mut_ptr().add(index) as *mut [T; N])) }
     }
 }

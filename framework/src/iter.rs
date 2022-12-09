@@ -109,3 +109,8 @@ where
         self.iter.next().and_then(&mut self.map_fn)
     }
 }
+
+pub trait LendingIterator {
+    type Item<'e> where Self: 'e;
+    fn next(&mut self) -> Option<Self::Item<'_>>;
+}

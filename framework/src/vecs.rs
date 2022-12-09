@@ -1,3 +1,4 @@
+use num::Integer;
 use std::fmt;
 
 macro_rules! substitute {
@@ -29,6 +30,38 @@ macro_rules! impl_vec {
             pub fn zero() -> Self {
                 $name {
                     $($component: num::zero(),)+
+                }
+            }
+        }
+
+        impl<T: Clone> From<T> for $name<T> {
+            fn from(v: T) -> Self {
+                $name { $($component: v.clone(),)+ }
+            }
+        }
+
+        impl<T: Integer + Copy> $name<T> {
+            pub fn abs_delta(self, other: Self) -> Self {
+                Self {
+                    $($component: self.$component.max(other.$component) - self.$component.min(other.$component),)+
+                }
+            }
+
+            pub fn manhathan_distance(self, other: Self) -> T {
+                let delta = self.abs_delta(other);
+                T::zero() $(+ delta.$component)+
+            }
+
+            pub fn chebyshev_distance(self, other: Self) -> T {
+                let delta = self.abs_delta(other);
+                let mut max = T::zero();
+                $(max = max.max(delta.$component);)+
+                max
+            }
+
+            pub fn clamp(self, min: T, max: T) -> Self {
+                Self {
+                    $($component: self.$component.clamp(min, max),)+
                 }
             }
         }
