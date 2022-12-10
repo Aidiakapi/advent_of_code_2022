@@ -6,6 +6,7 @@
 #![allow(clippy::zero_prefixed_literal)]
 
 mod prelude;
+mod ocr;
 
 framework::main!(
     day01,
@@ -17,4 +18,5 @@ framework::main!(
     day07,
     day08,
     day09,
+    day10,
 );
