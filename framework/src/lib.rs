@@ -14,6 +14,7 @@ pub mod graph;
 pub mod grid;
 pub mod inputs;
 pub mod iter;
+pub mod ocr;
 pub mod offsets;
 pub mod outputs;
 pub mod parsers;

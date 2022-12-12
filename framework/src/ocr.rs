@@ -1,4 +1,4 @@
-use framework::util::init_array;
+use crate::util::init_array;
 
 // 4x6 for each character
 pub const WIDTH: usize = 4;

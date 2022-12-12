@@ -53,7 +53,7 @@ fn pt2_pixels(instructions: &[Instruction]) -> Result<Vec<bool>> {
 
 fn pt2(instructions: &[Instruction]) -> Result<AString> {
     let pixels = pt2_pixels(instructions)?;
-    crate::ocr::recognize_n::<8>(|x, y| pixels[y * 40 + x])
+    ocr::recognize_n::<8>(|x, y| pixels[y * 40 + x])
         .map(|o| o.into())
         .ok_or(Error::InvalidInput("failed to OCR"))
 }
