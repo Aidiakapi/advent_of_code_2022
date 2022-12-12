@@ -24,6 +24,7 @@ dependencies = [
 name = "advent_of_code_framework"
 version = "0.1.0"
 dependencies = [
+ "ahash",
  "colored",
  "num",
  "paste",

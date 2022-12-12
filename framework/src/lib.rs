@@ -1,6 +1,7 @@
 #![feature(auto_traits)]
 #![feature(decl_macro)]
 #![feature(entry_insert)]
+#![feature(hash_raw_entry)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(negative_impls)]

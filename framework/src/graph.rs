@@ -1,43 +1,205 @@
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    hash::Hash,
-};
+use ahash::AHashMap as HashMap;
+use std::collections::hash_map::RawEntryMut;
+use std::collections::VecDeque;
+use std::hash::Hash;
+use std::{collections::BinaryHeap, ops::Add};
 
-pub fn flood_fill<N, I, FV>(initial: N, mut visit: FV)
-where
-    N: Eq + Hash,
-    I: IntoIterator<Item = N>,
-    FV: FnMut(&N) -> I,
-{
-    let mut visited = HashMap::new();
-    dfs(initial, |n| {
-        let iter = match visited.entry(n) {
-            Entry::Occupied(_) => None,
-            Entry::Vacant(slot) => {
-                let slot = slot.insert_entry(());
-                Some(visit(slot.key()).into_iter())
-            }
-        };
-        iter.into_iter().flatten()
-    });
+#[repr(transparent)]
+pub struct BfsNodes<N> {
+    data: VecDeque<N>,
+}
+impl<N> BfsNodes<N> {
+    #[inline]
+    pub fn push(&mut self, value: N) {
+        self.data.push_back(value);
+    }
 }
 
-pub fn dfs<N, I, FV>(initial: N, mut visit: FV)
+impl<N> Extend<N> for BfsNodes<N> {
+    #[inline]
+    fn extend<T: IntoIterator<Item = N>>(&mut self, iter: T) {
+        self.data.extend(iter);
+    }
+}
+
+pub fn bfs<N, O, F>(init: N, mut visit: F) -> Option<O>
 where
-    N: Eq + Hash,
-    I: IntoIterator<Item = N>,
-    FV: FnMut(N) -> I,
+    F: FnMut(N, &mut BfsNodes<N>) -> Option<O>,
 {
-    pub fn dfs_impl<N, I, FV>(current: N, visit: &mut FV)
-    where
-        N: Eq + Hash,
-        I: IntoIterator<Item = N>,
-        FV: FnMut(N) -> I,
-    {
-        for node in visit(current) {
-            dfs_impl(node, visit);
+    let mut nodes = BfsNodes {
+        data: VecDeque::new(),
+    };
+    nodes.push(init);
+    while let Some(node) = nodes.data.pop_front() {
+        if let Some(output) = visit(node, &mut nodes) {
+            return Some(output);
+        }
+    }
+    None
+}
+
+pub struct AStarInfo<N, C> {
+    pub path: Vec<(N, C)>,
+    pub total_cost: C,
+}
+
+pub fn astar<N, C, FN, FH, FC>(
+    start: N,
+    mut next: FN,
+    mut heuristic: FH,
+    mut is_target: FC,
+) -> Option<AStarInfo<N, C>>
+where
+    N: Clone + Hash + Eq,
+    C: Ord + Copy + Add<Output = C> + Default,
+    FN: FnMut(&N, &mut Vec<(N, C)>),
+    FH: FnMut(&N) -> C,
+    FC: FnMut(&N) -> bool,
+{
+    struct Pending<N, C: Ord + Copy + Add<Output = C> + Default> {
+        cost: C,
+        cost_and_heuristic: C,
+        node: N,
+        previous: Option<N>,
+    }
+
+    impl<N, C: Ord + Copy + Add<Output = C> + Default> PartialEq for Pending<N, C> {
+        fn eq(&self, other: &Self) -> bool {
+            self.cost_and_heuristic == other.cost_and_heuristic
+        }
+    }
+    impl<N, C: Ord + Copy + Add<Output = C> + Default> Eq for Pending<N, C> {}
+    impl<N, C: Ord + Copy + Add<Output = C> + Default> PartialOrd for Pending<N, C> {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+    impl<N, C: Ord + Copy + Add<Output = C> + Default> Ord for Pending<N, C> {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            other.cost_and_heuristic.cmp(&self.cost_and_heuristic)
         }
     }
 
-    dfs_impl(initial, &mut visit)
+    let mut pending = BinaryHeap::new();
+    pending.push(Pending {
+        cost: C::default(),
+        cost_and_heuristic: heuristic(&start),
+        node: start,
+        previous: None,
+    });
+    let mut visited = HashMap::<N, (C, Option<N>)>::new();
+    let mut next_nodes = Vec::new();
+    while let Some(entry) = pending.pop() {
+        if is_target(&entry.node) {
+            let total_cost = entry.cost;
+            let mut path = Vec::new();
+            path.push((entry.node, total_cost));
+            let mut previous = entry.previous;
+            while let Some(node) = previous {
+                let cost;
+                (cost, previous) = visited.remove(&node).unwrap();
+                path.push((node, cost));
+            }
+
+            path.reverse();
+            return Some(AStarInfo { total_cost, path });
+        }
+        let node = match visited.raw_entry_mut().from_key(&entry.node) {
+            RawEntryMut::Occupied(mut previously_visited) => {
+                let previous = previously_visited.get_mut();
+                if previous.0 <= entry.cost {
+                    continue;
+                }
+                previous.0 = entry.cost;
+                previous.1 = entry.previous;
+                previously_visited.insert_key(entry.node);
+                previously_visited.into_key()
+            }
+            RawEntryMut::Vacant(slot) => slot.insert(entry.node, (entry.cost, entry.previous)).0,
+        };
+        next(node, &mut next_nodes);
+        for (next_node, next_cost) in next_nodes.drain(..) {
+            let cost = entry.cost + next_cost;
+            pending.push(Pending {
+                cost,
+                cost_and_heuristic: cost + heuristic(&next_node),
+                node: next_node,
+                previous: Some(node.clone()),
+            });
+        }
+    }
+    None
+}
+
+pub fn astar_path_cost<N, C, FN, FH, FC>(
+    start: N,
+    mut next: FN,
+    mut heuristic: FH,
+    mut is_target: FC,
+) -> Option<C>
+where
+    N: Hash + Eq,
+    C: Ord + Copy + Add<Output = C> + Default,
+    FN: FnMut(&N, &mut Vec<(N, C)>),
+    FH: FnMut(&N) -> C,
+    FC: FnMut(&N) -> bool,
+{
+    struct Pending<N, C: Ord + Copy + Add<Output = C> + Default> {
+        cost: C,
+        cost_and_heuristic: C,
+        node: N,
+    }
+
+    impl<N, C: Ord + Copy + Add<Output = C> + Default> PartialEq for Pending<N, C> {
+        fn eq(&self, other: &Self) -> bool {
+            self.cost_and_heuristic == other.cost_and_heuristic
+        }
+    }
+    impl<N, C: Ord + Copy + Add<Output = C> + Default> Eq for Pending<N, C> {}
+    impl<N, C: Ord + Copy + Add<Output = C> + Default> PartialOrd for Pending<N, C> {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+    impl<N, C: Ord + Copy + Add<Output = C> + Default> Ord for Pending<N, C> {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            other.cost_and_heuristic.cmp(&self.cost_and_heuristic)
+        }
+    }
+
+    let mut pending = BinaryHeap::new();
+    pending.push(Pending {
+        cost: C::default(),
+        cost_and_heuristic: heuristic(&start),
+        node: start,
+    });
+    let mut visited = HashMap::<N, C>::new();
+    let mut next_nodes = Vec::new();
+    while let Some(entry) = pending.pop() {
+        if is_target(&entry.node) {
+            return Some(entry.cost);
+        }
+        let node = match visited.raw_entry_mut().from_key(&entry.node) {
+            RawEntryMut::Occupied(mut previously_visited) => {
+                let previous = previously_visited.get_mut();
+                if *previous <= entry.cost {
+                    continue;
+                }
+                *previous = entry.cost;
+                previously_visited.insert_key(entry.node);
+                previously_visited.into_key()
+            }
+            RawEntryMut::Vacant(slot) => slot.insert(entry.node, entry.cost).0,
+        };
+        next(node, &mut next_nodes);
+        for (next_node, next_cost) in next_nodes.drain(..) {
+            let cost = entry.cost + next_cost;
+            pending.push(Pending {
+                cost,
+                cost_and_heuristic: cost + heuristic(&next_node),
+                node: next_node,
+            });
+        }
+    }
+    None
 }
