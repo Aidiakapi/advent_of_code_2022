@@ -1,18 +1,18 @@
 mod combi;
 mod common;
 pub mod error;
+mod grid;
 mod multi;
 pub mod numbers;
 mod util;
-mod grid;
 
 pub use combi::ParserCombiExt;
 pub use common::{any, digit, pattern, token};
 pub use error::{ParseError, ParseResult};
+pub use grid::grid;
 pub use multi::{take_while, ParserMultiExt};
 pub use numbers::number;
 pub use util::AStrExt;
-pub use grid::grid;
 
 pub trait Parser<'s> {
     type Output: 's;
@@ -36,5 +36,16 @@ impl<'s, P: Parser<'s, Output = T>, T> Execute<'s, T> for P {
             ),
         }
         .into())
+    }
+}
+
+impl<'s, F, O> Parser<'s> for F
+where
+    F: Fn(&'s [u8]) -> ParseResult<'s, O>,
+    O: 's,
+{
+    type Output = O;
+    fn parse(&self, input: &'s [u8]) -> ParseResult<'s, Self::Output> {
+        (self)(input)
     }
 }
