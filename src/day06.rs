@@ -63,7 +63,7 @@ fn pt2(input: &[u8]) -> Result<usize> {
 
 fn parse(mut input: &[u8]) -> Result<&[u8]> {
     input = input.trim_ascii_end();
-    if input.iter().all(|c| matches!(c, b'a'..=b'z')) {
+    if input.iter().all(|c| c.is_ascii_lowercase()) {
         Ok(input)
     } else {
         Err(Error::InvalidInput("invalid characters in input"))

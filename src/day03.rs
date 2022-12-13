@@ -49,7 +49,7 @@ fn pt2(backpacks: &[&[u8]]) -> Result<u32> {
 
 fn parse(input: &[u8]) -> Result<Vec<&[u8]>> {
     use parsers::*;
-    take_while((), |_, l| matches!(l, b'a'..=b'z' | b'A'..=b'Z'))
+    take_while((), |_, l| l.is_ascii_alphabetic())
         .sep_by(token(b'\n'))
         .execute(input)
 }
