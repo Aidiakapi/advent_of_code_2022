@@ -41,6 +41,26 @@ impl<T> Grid<T> for VecGrid<T> {
 }
 
 impl<T> VecGrid<T> {
+    pub fn new(
+        width: usize,
+        height: usize,
+        mut initializer: impl FnMut(Vec2) -> T,
+    ) -> VecGrid<T> {
+        assert!(width > 0);
+        assert!(height > 0);
+        let mut data = Vec::with_capacity(width * height);
+        for y in 0..height {
+            for x in 0..width {
+                data.push(initializer(Vec2::new(x, y)));
+            }
+        }
+        VecGrid {
+            width,
+            height,
+            data,
+        }
+    }
+
     pub fn width(&self) -> usize {
         self.width
     }
@@ -111,6 +131,20 @@ impl<T> VecGrid<T> {
             height: self.height,
             next: Vec2::zero(),
         }
+    }
+
+    pub fn stringify(&self, mut to_char: impl FnMut(&T) -> char) -> String {
+        let mut str = String::with_capacity((self.width + 1) * self.height - 1);
+        for y in 0..self.height {
+            if y != 0 {
+                str.push('\n')
+            }
+            for x in 0..self.width {
+                let c = unsafe { self.get_unchecked((x, y).into()) };
+                str.push(to_char(c));
+            }
+        }
+        str
     }
 }
 

@@ -59,6 +59,46 @@ impl Offset {
     pub const fn has_y(self) -> bool {
         (self.value & 0b1010) != 0
     }
+
+    pub const fn from_coordinate(value: Vec2<i32>) -> Option<(Offset, usize)> {
+        let (ax, ay) = (value.x.abs(), value.y.abs());
+        if ax == 0 {
+            if ay == 0 {
+                return Some((Offset::NONE, 0));
+            }
+            return Some((
+                if value.y > 0 {
+                    Offset::Y_POS
+                } else {
+                    Offset::Y_NEG
+                },
+                ay as usize,
+            ));
+        }
+        if ay == 0 {
+            return Some((
+                if value.x > 0 {
+                    Offset::X_POS
+                } else {
+                    Offset::X_NEG
+                },
+                ay as usize,
+            ));
+        }
+        if ax != ay {
+            return None;
+        }
+
+        Some((
+            match (value.x > 0, value.y > 0) {
+                (true, true) => Offset::X_POS_Y_POS,
+                (true, false) => Offset::X_POS_Y_NEG,
+                (false, true) => Offset::X_NEG_Y_POS,
+                (false, false) => Offset::X_NEG_Y_NEG,
+            },
+            ax as usize,
+        ))
+    }
 }
 
 pub trait CompatibleNumber = Clone + CheckedAdd + CheckedSub + One;

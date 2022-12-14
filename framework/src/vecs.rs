@@ -1,4 +1,4 @@
-use num::Integer;
+use num::{Integer, ToPrimitive};
 use std::fmt;
 
 macro_rules! substitute {
@@ -8,7 +8,7 @@ macro_rules! substitute {
 }
 
 macro_rules! impl_vec {
-    ($name:ident, $($component:ident),+, $str_fmt:literal) => {
+    ($name:ident, $neg_trait:ident, $($component:ident),+, $str_fmt:literal) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
         pub struct $name<T> {
             $(pub $component: T,)+
@@ -64,8 +64,22 @@ macro_rules! impl_vec {
                     $($component: self.$component.clamp(min, max),)+
                 }
             }
+
+            pub fn min_comp(self, min: Self) -> Self {
+                Self {
+                    $($component: self.$component.min(min.$component),)+
+                }
+            }
+
+            pub fn max_comp(self, max: Self) -> Self {
+                Self {
+                    $($component: self.$component.max(max.$component),)+
+                }
+            }
         }
 
+        auto trait $neg_trait {}
+        impl<T> !$neg_trait for $name<T> {}
         macro_rules! impl_binary_op {
             ($trait:ident, $fn_name:ident, $assign_trait:ident, $assign_fn_name:ident) => {
                 impl<T: std::ops::$trait<Rhs, Output = O>, Rhs, O> std::ops::$trait<$name<Rhs>>
@@ -85,6 +99,24 @@ macro_rules! impl_vec {
                 {
                     fn $assign_fn_name(&mut self, rhs: $name<Rhs>) {
                         $(self.$component.$assign_fn_name(rhs.$component);)+
+                    }
+                }
+
+                impl<T: std::ops::$trait<Rhs, Output = O>, Rhs: $neg_trait + Clone, O> std::ops::$trait<Rhs> for $name<T> {
+                    type Output = $name<O>;
+
+                    fn $fn_name(self, rhs: Rhs) -> Self::Output {
+                        $name {
+                            $($component: self.$component.$fn_name(rhs.clone()),)+
+                        }
+                    }
+                }
+
+                impl<T: std::ops::$assign_trait<Rhs>, Rhs: $neg_trait + Clone> std::ops::$assign_trait<Rhs>
+                    for $name<T>
+                {
+                    fn $assign_fn_name(&mut self, rhs: Rhs) {
+                        $(self.$component.$assign_fn_name(rhs.clone());)+
                     }
                 }
             };
@@ -122,10 +154,41 @@ macro_rules! impl_vec {
                 write!(f, $str_fmt, $(self.$component),+)
             }
         }
+
+        impl<T: ToPrimitive> $name<T> {
+            impl_vec!(@cast_op, $name { $($component),+ }, [
+                (u8, to_u8),
+                (u16, to_u16),
+                (u32, to_u32),
+                (u64, to_u64),
+                (u128, to_u128),
+                (usize, to_usize),
+                (i8, to_i8),
+                (i16, to_i16),
+                (i32, to_i32),
+                (i64, to_i64),
+                (i128, to_i128),
+                (isize, to_isize),
+                (f32, to_f32),
+                (f64, to_f64),
+            ]);
+        }
     };
+    (@cast_op, $name:ident { $($component:ident),+ }, [($t:ident, $f:ident), $($rest:tt)*]) => {
+        pub fn $f(self) -> $name<$t> {
+            $name {
+                $($component: self.$component.$f().unwrap(),)+
+            }
+        }
+        impl_vec!(@cast_op, $name { $($component),+ }, [$($rest)*]);
+    };
+    (@cast_op, $name:ident { $($component:ident),+ }, []) => {};
 }
 
-impl_vec!(Vec1, x, "({})");
-impl_vec!(Vec2, x, y, "({}, {})");
-impl_vec!(Vec3, x, y, z, "({}, {}, {})");
-impl_vec!(Vec4, x, y, z, w, "({}, {}, {}, {})");
+auto trait NotSame {}
+impl<T> !NotSame for (T, T) {}
+
+impl_vec!(Vec1, NotVec1, x, "({})");
+impl_vec!(Vec2, NotVec2, x, y, "({}, {})");
+impl_vec!(Vec3, NotVec3, x, y, z, "({}, {}, {})");
+impl_vec!(Vec4, NotVec4, x, y, z, w, "({}, {}, {}, {})");

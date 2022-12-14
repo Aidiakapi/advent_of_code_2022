@@ -1,3 +1,4 @@
+#![feature(array_windows)]
 #![feature(byte_slice_trim_ascii)]
 
 #![feature(custom_test_frameworks)]
@@ -21,4 +22,5 @@ framework::main!(
     day11,
     day12,
     day13,
+    day14,
 );
