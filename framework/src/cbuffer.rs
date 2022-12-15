@@ -49,7 +49,10 @@ impl<I: Indexer + Debug, V: Value + Debug> CBuffer<I, V> {
     }
 
     pub fn ranges(&self) -> CBufferRangeIter<'_, I, V> {
-        CBufferRangeIter { windows: self.data.array_windows(), last: self.data.last() }
+        CBufferRangeIter {
+            windows: self.data.array_windows(),
+            last: self.data.last(),
+        }
     }
 
     pub fn set(&mut self, range: Range<I>, value: V, mutator: &mut CBufferMutator<I, V>) {
@@ -103,12 +106,11 @@ impl<I: Indexer + Debug, V: Value + Debug> CBuffer<I, V> {
             // So it should be conditionally pushed.
             // The rest can remain as-is.
             Self::push_if_different(&mut mutator.data, entry.0, entry.1);
-            while let Some(entry) = data.next() {
-                mutator.data.push(entry);
-            }
+            mutator.data.extend(data);
+        } else {
+            std::mem::drop(data);
         }
 
-        std::mem::drop(data);
         std::mem::swap(&mut mutator.data, &mut self.data);
         self.verify();
     }
@@ -122,7 +124,7 @@ impl<I: Indexer + Debug, V: Value + Debug> CBuffer<I, V> {
 
     #[cfg(debug_assertions)]
     fn verify(&self) {
-        assert!(self.data.len() > 0);
+        assert!(!self.data.is_empty());
         assert!(self.data[0].0 == I::min_value());
         for [prev, next] in self.data.array_windows() {
             assert!(
@@ -177,10 +179,21 @@ mod tests {
         assert!(cbuffer.count_values(&true) == Some(100));
         cbuffer.set(150..200, true, mutator);
         assert!(cbuffer.count_values(&true) == Some(150));
-        assert_eq!(cbuffer.ranges().collect::<Vec<_>>(), vec![(0..100, &true), (100..150, &false), (150..200, &true), (200..usize::MAX, &false)]);
+        assert_eq!(
+            cbuffer.ranges().collect::<Vec<_>>(),
+            vec![
+                (0..100, &true),
+                (100..150, &false),
+                (150..200, &true),
+                (200..usize::MAX, &false)
+            ]
+        );
         cbuffer.set(100..150, true, mutator);
         assert!(cbuffer.count_values(&true) == Some(200));
-        assert_eq!(cbuffer.ranges().collect::<Vec<_>>(), vec![(0..200, &true), (200..usize::MAX, &false)]);
+        assert_eq!(
+            cbuffer.ranges().collect::<Vec<_>>(),
+            vec![(0..200, &true), (200..usize::MAX, &false)]
+        );
         cbuffer.set(20..50, true, mutator);
         assert!(cbuffer.count_values(&true) == Some(200));
         cbuffer.set(50..200, false, mutator);
