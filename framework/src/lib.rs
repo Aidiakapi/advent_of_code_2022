@@ -1,7 +1,9 @@
+#![feature(array_windows)]
 #![feature(auto_traits)]
 #![feature(decl_macro)]
 #![feature(entry_insert)]
 #![feature(hash_raw_entry)]
+#![feature(let_chains)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(negative_impls)]
@@ -10,6 +12,7 @@
 #![feature(trait_alias)]
 
 pub mod astr;
+pub mod cbuffer;
 pub mod error;
 pub mod graph;
 pub mod grid;

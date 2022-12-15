@@ -109,3 +109,52 @@ impl_binary_op_output!("+", AddOutput, Add, add, Zero, zero);
 impl_binary_op_output!("-", SubOutput, Sub, sub, Zero, zero);
 impl_binary_op_output!("*", MulOutput, Mul, mul, One, one);
 impl_binary_op_output!("/", DivOutput, Div, div, One, one);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CombiOutput<T>(pub T);
+
+impl<T> !NotIntoColorOutput for CombiOutput<T> {}
+impl<T, I> From<CombiOutput<T>> for ColoredOutput
+where
+    T: IntoIterator<Item = I>,
+    I: fmt::Display,
+{
+    fn from(input: CombiOutput<T>) -> Self {
+        let items = input.0.into_iter().collect::<Vec<_>>();
+        if items.is_empty() {
+            let value = "empty".italic().dimmed().to_string();
+            let control_count = value.len() - 5;
+            return ColoredOutput {
+                value,
+                control_count,
+            };
+        }
+
+        let mut value = String::new();
+        let mut str_len = 0;
+        for (i, v) in items[..items.len() - 1].iter().enumerate() {
+            let s = v.to_string();
+            if i != 0 {
+                _ = write!(value, "{} ", ",".bright_magenta());
+                str_len += 2;
+            }
+            _ = write!(value, "{}", s.white());
+            str_len += s.len();
+        }
+
+        if items.len() != 1 {
+            _ = write!(value, " {} ", "=>".bright_magenta());
+            str_len += 4;
+        }
+
+        let s = items.last().unwrap().to_string();
+        _ = write!(value, "{}", s.white().bold());
+        str_len += s.len();
+
+        let control_count = value.len() - str_len;
+        ColoredOutput {
+            value,
+            control_count,
+        }
+    }
+}

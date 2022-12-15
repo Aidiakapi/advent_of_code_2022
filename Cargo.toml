@@ -8,6 +8,7 @@ ahash = "0.8"
 framework = { path = "./framework", package = "advent_of_code_framework" }
 itertools = "0.10"
 num = "0.4"
+rayon = "1.6.1"
 
 [dev-dependencies]
 criterion = "0.4"

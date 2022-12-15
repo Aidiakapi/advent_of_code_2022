@@ -1,4 +1,5 @@
 pub use crate::astr::{AStr, AString};
+pub use crate::cbuffer::{CBuffer, CBufferMutator};
 pub use crate::error::Error;
 pub use crate::graph;
 pub use crate::grid::VecGrid;
