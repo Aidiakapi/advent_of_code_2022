@@ -1,6 +1,6 @@
 framework::day!(14, parse => pt1, pt2);
-
-type Int = u32;
+type Path = Vec<Vec2>;
+type Vec2 = framework::vecs::Vec2<usize>;
 type Grid = VecGrid<Cell>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -10,9 +10,9 @@ enum Cell {
     Sand,
 }
 
-fn simulate<const PADDING: u32>(
-    paths: &[Vec<Vec2<Int>>],
-    mut postprocess_grid: impl FnMut(&mut Grid),
+fn simulate<const PADDING: usize>(
+    paths: &[Path],
+    mut process_grid: impl FnMut(&mut Grid),
 ) -> Result<Grid> {
     let (min, max) = paths.iter().flat_map(|path| path.iter()).fold(
         (Vec2::new(500, 0), Vec2::new(500, 0)),
@@ -23,24 +23,25 @@ fn simulate<const PADDING: u32>(
         max + Vec2::new(PADDING * 2, PADDING),
     );
     let size = max + 1 - min;
-    let mut grid = VecGrid::new(size.x as usize, size.y as usize, |_| Cell::Air);
-    for path in paths {
-        for (from, to) in path.iter().map(|p| *p - min).tuple_windows() {
-            let delta = to.to_i32() - from.to_i32();
-            let (offset, _) = Offset::from_coordinate(delta)
-                .ok_or(Error::InvalidInput("path is not straight or diagonal"))?;
-
-            let points =
-                std::iter::successors(
-                    Some(from),
-                    |p| if *p == to { None } else { p.neighbor(offset) },
-                );
-
-            points.for_each(|p| grid[p.to_usize()] = Cell::Rock);
+    let mut grid = VecGrid::new(size.x, size.y, |_| Cell::Air);
+    for (from, to) in paths
+        .iter()
+        .flat_map(|path| path.iter().map(|&p| p - min).tuple_windows())
+    {
+        if from.x == to.x {
+            let (min, max) = from.y.minmax(to.y);
+            for y in min..max + 1 {
+                grid[(from.x, y)] = Cell::Rock;
+            }
+        } else {
+            let (min, max) = from.x.minmax(to.x);
+            for x in min..max + 1 {
+                grid[(x, from.y)] = Cell::Rock;
+            }
         }
     }
 
-    postprocess_grid(&mut grid);
+    process_grid(&mut grid);
     let origin = (Vec2::new(500, 0) - min).to_usize();
 
     'spawning: loop {
@@ -68,7 +69,7 @@ fn simulate<const PADDING: u32>(
                 break;
             }
             *cell = Cell::Sand;
-            continue;
+            continue 'spawning;
         }
         break;
     }
@@ -76,12 +77,12 @@ fn simulate<const PADDING: u32>(
     Ok(grid)
 }
 
-fn pt1(paths: &[Vec<Vec2<Int>>]) -> Result<usize> {
+fn pt1(paths: &[Path]) -> Result<usize> {
     let grid = simulate::<0>(paths, |_| {})?;
     Ok(grid.cells().iter().filter(|c| **c == Cell::Sand).count())
 }
 
-fn pt2(paths: &[Vec<Vec2<Int>>]) -> Result<usize> {
+fn pt2(paths: &[Path]) -> Result<usize> {
     let grid = simulate::<2>(paths, |grid| {
         let bottom = grid.height() - 1;
         for x in 0..grid.width() {
@@ -105,9 +106,9 @@ fn pt2(paths: &[Vec<Vec2<Int>>]) -> Result<usize> {
     Ok(grid.cells().iter().filter(|c| **c == Cell::Sand).count() + additional)
 }
 
-fn parse(input: &[u8]) -> Result<Vec<Vec<Vec2<Int>>>> {
+fn parse(input: &[u8]) -> Result<Vec<Path>> {
     use parsers::*;
-    let nr = number::<Int>();
+    let nr = number::<usize>();
     let point = nr.and(token(b',').then(nr)).map(Vec2::from);
     let path = point.sep_by(token(b" -> "));
     let paths = path.sep_by(token(b'\n'));
