@@ -9,7 +9,7 @@ pub use crate::outputs::*;
 pub use crate::parsers;
 pub use crate::result::Result;
 pub use crate::tests;
-pub use crate::util::{self, SliceExt};
+pub use crate::util::{self, SliceExt, OrdExt};
 pub use crate::vecs::*;
 pub use ahash::AHashMap as HashMap;
 pub use ahash::AHashSet as HashSet;

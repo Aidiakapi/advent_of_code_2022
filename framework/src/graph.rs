@@ -4,6 +4,24 @@ use std::collections::VecDeque;
 use std::hash::Hash;
 use std::{collections::BinaryHeap, ops::Add};
 
+pub fn dfs<N, O, F>(init: N, mut visit: F) -> Option<O>
+where
+    F: FnMut(N, &mut Vec<N>) -> Option<O>,
+{
+    let mut stack = Vec::new();
+    stack.push(init);
+    let mut next = Vec::new();
+    while let Some(node) = stack.pop() {
+        if let Some(result) = visit(node, &mut next) {
+            return Some(result);
+        }
+        while let Some(next) = next.pop() {
+            stack.push(next);
+        }
+    }
+    None
+}
+
 #[repr(transparent)]
 pub struct BfsNodes<N> {
     data: VecDeque<N>,

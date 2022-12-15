@@ -84,3 +84,15 @@ impl<'s, T: 's, const N: usize> LendingIterator for WindowsMut<'s, T, N> {
         unsafe { Some(&mut *(self.slice.as_mut_ptr().add(index) as *mut [T; N])) }
     }
 }
+
+pub trait OrdExt: Sized + Ord {
+    fn minmax(self, other: Self) -> (Self, Self) {
+        if self <= other {
+            (self, other)
+        } else {
+            (other, self)
+        }
+    }
+}
+
+impl<T: Sized + Ord> OrdExt for T {}

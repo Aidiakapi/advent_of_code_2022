@@ -1,5 +1,6 @@
 #![feature(array_windows)]
 #![feature(byte_slice_trim_ascii)]
+#![feature(let_chains)]
 
 #![feature(custom_test_frameworks)]
 #![cfg_attr(feature = "criterion", test_runner(criterion::runner))]
