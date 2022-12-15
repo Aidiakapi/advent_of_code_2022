@@ -24,40 +24,61 @@ fn count_points_without_beacons<const Y: i32>(scans: &[Scan]) -> usize {
     blocked.count_values(&true).unwrap() as usize - beacon_set.len()
 }
 
-fn find_defective<const UPPER: i32>(scans: &[Scan]) -> Result<CombiOutput<[i64; 3]>> {
-    let scans = scans
-        .iter()
-        .map(|s| (s.sensor, s.sensor.manhathan_distance(s.beacon)))
-        .collect_vec();
-    (0..UPPER + 1)
-        .into_par_iter()
-        .find_map_any(|x| {
-            let mutator = &mut CBuffer::mutator();
-            let mut overlaps = CBuffer::new(true);
-            scans
-                .iter()
-                .filter_map(|(p, d)| {
-                    let half_width = d - (p.x - x).abs();
-                    if half_width < 0 {
-                        None
-                    } else {
-                        Some(p.y - half_width..p.y + half_width + 1)
-                    }
-                })
-                .for_each(|range| {
-                    overlaps.set(range, false, mutator);
-                });
-            overlaps.set(i32::MIN..0, false, mutator);
-            overlaps.set(UPPER + 1..i32::MAX, false, mutator);
+#[derive(Debug, Clone, Copy)]
+struct Sensor {
+    position: Vec2,
+    radius: i32,
+}
 
-            for (range, &can_place_beacon) in overlaps.ranges() {
-                if can_place_beacon && range.len() == 1 {
-                    let y = range.start;
-                    return Some(CombiOutput([
-                        x as i64,
-                        y as i64,
-                        x as i64 * 4_000_000 + y as i64,
-                    ]));
+fn try_find_defective<const UPPER: i32>(
+    sensors: &[Sensor],
+    y: i32,
+) -> Option<CombiOutput<[i64; 3]>> {
+    let mut x = 0;
+    'outer: while x <= UPPER {
+        for sensor in sensors {
+            let radius = sensor.radius - (sensor.position.y - y).abs();
+            if x >= sensor.position.x - radius && x <= sensor.position.x + radius {
+                x = sensor.position.x + radius + 1;
+                continue 'outer;
+            }
+        }
+
+        let (x, y) = (x as i64, y as i64);
+        return Some(CombiOutput([x, y, x * 4_000_000 + y]));
+    }
+    None
+}
+
+fn find_defective<const UPPER: i32>(scans: &[Scan]) -> Result<CombiOutput<[i64; 3]>> {
+    let sensors = scans
+        .iter()
+        .map(|scan| Sensor {
+            position: scan.sensor,
+            radius: scan.sensor.manhathan_distance(scan.beacon),
+        })
+        .sorted_by(|a, b| b.radius.cmp(&a.radius))
+        .collect_vec();
+
+    const CHUNK_SIZE: i32 = 10_000;
+    (0..UPPER + 1)
+        .step_by(CHUNK_SIZE as usize)
+        .par_bridge()
+        .find_map_first(|y: i32| {
+            let range = y..(y + CHUNK_SIZE).min(UPPER + 1);
+            // Filter sensors down to those that can potentially hit this chunk
+            let sensors = sensors
+                .iter()
+                .filter(|sensor| {
+                    let start = sensor.position.y - sensor.radius;
+                    let end = sensor.position.y + sensor.radius;
+                    start < range.end && range.start <= end
+                })
+                .cloned()
+                .collect_vec();
+            for y in range {
+                if let Some(defective) = try_find_defective::<UPPER>(&sensors, y) {
+                    return Some(defective);
                 }
             }
             None
