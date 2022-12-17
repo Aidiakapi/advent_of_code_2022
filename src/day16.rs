@@ -1,3 +1,4 @@
+use framework::util::init_array;
 use std::collections::BinaryHeap;
 framework::day!(16, parse => pt1, pt2);
 
@@ -93,31 +94,40 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
     // graph, which allows us to have a much better heuristic.
     let mut paths = PathCache::default();
 
-    // Calculates an upper bound on how much venting can still be achieved.
-    // This is used as heuristic to navigate to better routes. It assumes that
-    // at the given timestamp, all valves in remainder are still closed, and so
-    // it'd take at least a single timestep to open one, and then it'd take at
-    // least an additional timestep to move to a new point.
-    let calculate_potential = |mut time: u32, mut remainder: u64| {
-        time += 1;
-        if time >= TIME as u32 {
-            return 0;
-        }
+    // Calculates an upper bound on how much can be vented, by assuming that the
+    // distance between any two valves in the tunnel network is MIN_PATH_LEN.
+    // Because all travel is constant time, the optimal strategy is to open the
+    // highest flow-rate valves first. The result is that opening a "bad" valve
+    // early, will result in tons of loss of potential, for minimal gain in
+    // actual vented. Whereas opening a "good" valve early, will result in a
+    // slightly greater loss in potential (it can't be opened multiple times),
+    // but on the flip side, it adds a much higher amount of actually vented.
+    let calculate_potential = |mut time: u32, targets: &[Target; UNITS], mut remainder: u64| {
+        let mut time_until_opening: [u32; UNITS] = init_array(|i| {
+            Ok::<_, !>(match targets[i] {
+                Target::Pending => 2,
+                Target::Moving(_, time_until_pathing) => time_until_pathing + 1 + MIN_PATH_LEN,
+                Target::Idle => TIME as u32 + 1,
+            })
+        })
+        .unwrap();
         let mut flow_rate = 0;
         let mut potential = 0;
         loop {
-            for _ in 0..UNITS {
-                if let Some(bit) = pop_lsb(&mut remainder) {
-                    flow_rate += priorities[bit].1.flow_rate;
+            if time >= TIME as u32 {
+                return potential;
+            }
+            for time_until_opening in time_until_opening.iter_mut() {
+                *time_until_opening -= 1;
+                if *time_until_opening == 0 {
+                    *time_until_opening = MIN_PATH_LEN;
+                    if let Some(bit) = pop_lsb(&mut remainder) {
+                        flow_rate += priorities[bit].1.flow_rate;
+                    }
                 }
             }
-            for _ in 0..MIN_PATH_LEN + 1 {
-                potential += flow_rate;
-                time += 1;
-                if time >= TIME as u32 {
-                    return potential;
-                }
-            }
+            time += 1;
+            potential += flow_rate;
         }
     };
 
@@ -131,7 +141,7 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
         remaining_flow_rate: flow_rate_sum,
         vented: 0,
         time: 1,
-        potential: calculate_potential(1, remainder),
+        potential: calculate_potential(1, &[Target::Pending; UNITS], remainder),
     });
 
     let mut max_vented = 0;
@@ -172,7 +182,7 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
                     remaining_flow_rate,
                     time: entry.time,
                     vented,
-                    potential: calculate_potential(entry.time + 1, remainder),
+                    potential: calculate_potential(entry.time, &targets, remainder),
                 });
             }
 
@@ -195,10 +205,10 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
         }
 
         entry.time += 1;
-        entry.potential = calculate_potential(entry.time, entry.remainder);
+        entry.potential = calculate_potential(entry.time, &entry.targets, entry.remainder);
         queue.push(entry);
     }
-    
+
     // Generally, and on my input, this optimization gives over a 2x, and is
     // fine. However, this is a fallback to detect a case where it is not a
     // proper assumption on anyone's input, and it'll simply re-run the solution
