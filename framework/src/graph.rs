@@ -4,40 +4,48 @@ use std::collections::VecDeque;
 use std::hash::Hash;
 use std::{collections::BinaryHeap, ops::Add};
 
+macro_rules! nodes_container {
+    ($name:ident, $underlying:ident, $push_fn:ident) => {
+        #[repr(transparent)]
+        pub struct $name<N> {
+            data: $underlying<N>,
+        }
+        impl<N> $name<N> {
+            #[inline]
+            pub fn push(&mut self, value: N) {
+                self.data.$push_fn(value);
+            }
+        }
+
+        impl<N> Extend<N> for $name<N> {
+            #[inline]
+            fn extend<T: IntoIterator<Item = N>>(&mut self, iter: T) {
+                self.data.extend(iter);
+            }
+        }
+    };
+}
+
+nodes_container!(DfsNodes, Vec, push);
+nodes_container!(BfsNodes, VecDeque, push_back);
+
+/// Depth-first search, starting at a particular node, and visiting
+/// all indicated neighbors.
+/// Cyclic graphs will result in a hang.
+/// Return Some(value) at any point to halt the process.
+/// Child nodes added during each visit are visited in reverse insertion order.
 pub fn dfs<N, O, F>(init: N, mut visit: F) -> Option<O>
 where
-    F: FnMut(N, &mut Vec<N>) -> Option<O>,
+    F: FnMut(N, &mut DfsNodes<N>) -> Option<O>,
 {
-    let mut stack = Vec::new();
-    stack.push(init);
-    let mut next = Vec::new();
-    while let Some(node) = stack.pop() {
-        if let Some(result) = visit(node, &mut next) {
+    let mut nodes = DfsNodes { data: Vec::new() };
+    nodes.data.push(init);
+    while let Some(node) = nodes.data.pop() {
+        if let Some(result) = visit(node, &mut nodes) {
             return Some(result);
-        }
-        while let Some(next) = next.pop() {
-            stack.push(next);
         }
     }
     None
-}
-
-#[repr(transparent)]
-pub struct BfsNodes<N> {
-    data: VecDeque<N>,
-}
-impl<N> BfsNodes<N> {
-    #[inline]
-    pub fn push(&mut self, value: N) {
-        self.data.push_back(value);
-    }
-}
-
-impl<N> Extend<N> for BfsNodes<N> {
-    #[inline]
-    fn extend<T: IntoIterator<Item = N>>(&mut self, iter: T) {
-        self.data.extend(iter);
-    }
 }
 
 pub fn bfs<N, O, F>(init: N, mut visit: F) -> Option<O>
