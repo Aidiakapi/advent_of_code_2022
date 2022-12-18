@@ -1,4 +1,3 @@
-use framework::util::init_array;
 use std::collections::BinaryHeap;
 framework::day!(16, parse => pt1, pt2);
 
@@ -36,17 +35,10 @@ fn pop_lsb(mask: &mut u64) -> Option<usize> {
     Some(index as usize)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Target {
-    Pending,
-    Moving(usize, u32),
-    Idle,
-}
-
 #[derive(Debug, Clone)]
 struct Entry<const UNITS: usize> {
     positions: [usize; UNITS],
-    targets: [Target; UNITS],
+    wait_timers: [u32; UNITS],
     remainder: u64,
     remaining_flow_rate: u32,
     vented: u32,
@@ -102,22 +94,17 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
     // actual vented. Whereas opening a "good" valve early, will result in a
     // slightly greater loss in potential (it can't be opened multiple times),
     // but on the flip side, it adds a much higher amount of actually vented.
-    let calculate_potential = |mut time: u32, targets: &[Target; UNITS], mut remainder: u64| {
-        let mut time_until_opening: [u32; UNITS] = init_array(|i| {
-            Ok::<_, !>(match targets[i] {
-                Target::Pending => 2,
-                Target::Moving(_, time_until_pathing) => time_until_pathing + 1 + MIN_PATH_LEN,
-                Target::Idle => TIME as u32 + 1,
-            })
-        })
-        .unwrap();
+    let calculate_potential = |mut time: u32, mut wait_timers: [u32; UNITS], mut remainder: u64| {
+        for timer in wait_timers.iter_mut() {
+            *timer += 1 + MIN_PATH_LEN;
+        }
         let mut flow_rate = 0;
         let mut potential = 0;
         loop {
             if time >= TIME as u32 {
                 return potential;
             }
-            for time_until_opening in time_until_opening.iter_mut() {
+            for time_until_opening in wait_timers.iter_mut() {
                 *time_until_opening -= 1;
                 if *time_until_opening == 0 {
                     *time_until_opening = MIN_PATH_LEN;
@@ -136,12 +123,12 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
     let mut queue = BinaryHeap::new();
     queue.push(Entry {
         positions: [initial_position; UNITS],
-        targets: [Target::Pending; UNITS],
+        wait_timers: [0; UNITS],
         remainder,
         remaining_flow_rate: flow_rate_sum,
         vented: 0,
         time: 1,
-        potential: calculate_potential(1, &[Target::Pending; UNITS], remainder),
+        potential: 1,
     });
 
     let mut max_vented = 0;
@@ -152,8 +139,8 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
 
         // If there are any units that don't have a target, select one on them,
         // and continue onwards with those.
-        for (i, target) in entry.targets.iter_mut().enumerate() {
-            if !matches!(target, Target::Pending) {
+        for (i, timer) in entry.wait_timers.iter_mut().enumerate() {
+            if *timer != 0 {
                 continue;
             }
 
@@ -173,39 +160,38 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
                 }
                 let remainder = entry.remainder & !(1 << bit);
                 let remaining_flow_rate = entry.remaining_flow_rate - valve.flow_rate;
-                let mut targets = entry.targets;
-                targets[i] = Target::Moving(valve_index, cost);
+                let mut positions = entry.positions;
+                positions[i] = valve_index;
+                let mut wait_timers = entry.wait_timers;
+                wait_timers[i] = cost;
                 queue.push(Entry {
-                    positions: entry.positions,
-                    targets,
+                    positions,
+                    wait_timers,
                     remainder,
                     remaining_flow_rate,
                     time: entry.time,
                     vented,
-                    potential: calculate_potential(entry.time, &targets, remainder),
+                    potential: calculate_potential(entry.time, wait_timers, remainder),
                 });
             }
 
-            let mut targets = entry.targets;
-            targets[i] = Target::Idle;
-            queue.push(Entry { targets, ..entry });
+            let mut wait_timers = entry.wait_timers;
+            wait_timers[i] = TIME as u32 + 1;
+            queue.push(Entry {
+                wait_timers,
+                ..entry
+            });
 
             continue 'outer;
         }
 
         // At this point, all units have a target, and we advance in time
-        for i in 0..UNITS {
-            if let Target::Moving(goal, remainder) = &mut entry.targets[i] {
-                *remainder -= 1;
-                if *remainder == 0 {
-                    entry.positions[i] = *goal;
-                    entry.targets[i] = Target::Pending;
-                }
-            }
+        for timer in entry.wait_timers.iter_mut() {
+            *timer -= 1;
         }
 
         entry.time += 1;
-        entry.potential = calculate_potential(entry.time, &entry.targets, entry.remainder);
+        entry.potential = calculate_potential(entry.time, entry.wait_timers, entry.remainder);
         queue.push(entry);
     }
 
