@@ -157,18 +157,15 @@ where
     None
 }
 
-pub fn astar_path_cost<N, C, FN, FH, FC>(
+pub fn astar_path_cost<N, C>(
     start: N,
-    mut next: FN,
-    mut heuristic: FH,
-    mut is_target: FC,
+    mut next: impl FnMut(&N, &mut Vec<(N, C)>),
+    mut heuristic: impl FnMut(&N) -> C,
+    mut is_target: impl FnMut(&N) -> bool,
 ) -> Option<C>
 where
     N: Hash + Eq,
     C: Ord + Copy + Add<Output = C> + Default,
-    FN: FnMut(&N, &mut Vec<(N, C)>),
-    FH: FnMut(&N) -> C,
-    FC: FnMut(&N) -> bool,
 {
     struct Pending<N, C: Ord + Copy + Add<Output = C> + Default> {
         cost: C,

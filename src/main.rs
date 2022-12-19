@@ -1,7 +1,11 @@
 #![feature(array_windows)]
+#![feature(box_into_inner)]
 #![feature(byte_slice_trim_ascii)]
+#![feature(generic_const_exprs)]
 #![feature(let_chains)]
 #![feature(never_type)]
+
+#![allow(incomplete_features)]
 
 #![feature(custom_test_frameworks)]
 #![cfg_attr(feature = "criterion", test_runner(criterion::runner))]
@@ -29,4 +33,5 @@ framework::main!(
     day16,
     day17,
     day18,
+    day19,
 );

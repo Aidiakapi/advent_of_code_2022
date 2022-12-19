@@ -45,30 +45,7 @@ struct Entry<const UNITS: usize> {
     time: u32,
     potential: u32,
 }
-
-impl<const UNITS: usize> Entry<UNITS> {
-    fn potential_vented(&self) -> u32 {
-        self.vented + self.potential
-    }
-}
-impl<const UNITS: usize> PartialEq for Entry<UNITS> {
-    fn eq(&self, other: &Self) -> bool {
-        self.potential_vented() == other.potential_vented() && self.time == other.time
-    }
-}
-impl<const UNITS: usize> Eq for Entry<UNITS> {}
-impl<const UNITS: usize> PartialOrd for Entry<UNITS> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl<const UNITS: usize> Ord for Entry<UNITS> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.potential_vented()
-            .cmp(&other.potential_vented())
-            .then_with(|| self.time.cmp(&other.time))
-    }
-}
+util::impl_eq_ord_by!([const UNITS: usize] Entry[UNITS], potential, time);
 
 fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
     input: &(usize, Vec<Valve>),
@@ -94,12 +71,12 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
     // actual vented. Whereas opening a "good" valve early, will result in a
     // slightly greater loss in potential (it can't be opened multiple times),
     // but on the flip side, it adds a much higher amount of actually vented.
-    let calculate_potential = |mut time: u32, mut wait_timers: [u32; UNITS], mut remainder: u64| {
+    let calculate_potential = |vented: u32, mut time: u32, mut wait_timers: [u32; UNITS], mut remainder: u64| {
         for timer in wait_timers.iter_mut() {
             *timer += 1 + MIN_PATH_LEN;
         }
         let mut flow_rate = 0;
-        let mut potential = 0;
+        let mut potential = vented;
         loop {
             if time >= TIME as u32 {
                 return potential;
@@ -133,7 +110,7 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
 
     let mut max_vented = 0;
     'outer: while let Some(mut entry) = queue.pop() {
-        if entry.potential_vented() <= max_vented {
+        if entry.potential <= max_vented {
             break;
         }
 
@@ -171,7 +148,7 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
                     remaining_flow_rate,
                     time: entry.time,
                     vented,
-                    potential: calculate_potential(entry.time, wait_timers, remainder),
+                    potential: calculate_potential(vented, entry.time, wait_timers, remainder),
                 });
             }
 
@@ -191,7 +168,7 @@ fn pts<const UNITS: usize, const TIME: usize, const MIN_PATH_LEN: u32>(
         }
 
         entry.time += 1;
-        entry.potential = calculate_potential(entry.time, entry.wait_timers, entry.remainder);
+        entry.potential = calculate_potential(entry.vented, entry.time, entry.wait_timers, entry.remainder);
         queue.push(entry);
     }
 

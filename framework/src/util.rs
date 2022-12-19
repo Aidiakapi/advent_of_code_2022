@@ -96,3 +96,46 @@ pub trait OrdExt: Sized + Ord {
 }
 
 impl<T: Sized + Ord> OrdExt for T {}
+
+#[macro_export]
+macro_rules! __private__impl_eq_ord_by {
+    ([$($generic_def:tt)+] $ty:ident[$($generic_use:tt)+], $($field:ident),+$(,)*) => {
+        $crate::__private__impl_eq_ord_by!(@impl, $ty, [<$($generic_def)+>], [<$($generic_use)+>], $($field),+);
+    };
+    ($ty:ident, $($field:ident),+$(,)*) => {
+        $crate::__private__impl_eq_ord_by!(@impl, $ty, [], [], $($field),+);
+    };
+
+    (@impl, $ty:ident, [$($impl_post:tt)*], [$($ty_post:tt)*], $($field:ident),+) => {
+        impl $($impl_post)* PartialEq for $ty $($ty_post)* {
+            fn eq(&self, other: &Self) -> bool {
+                $(self.$field == other.$field)&&+
+            }
+        }
+        impl $($impl_post)* Eq for $ty $($ty_post)* {
+        }
+        impl $($impl_post)* PartialOrd for $ty $($ty_post)* {
+            fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                Some(self.cmp(other))
+            }
+        }
+        impl $($impl_post)* Ord for $ty $($ty_post)* {
+            fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+                $crate::__private__impl_eq_ord_by!(@cmp_impl, self, other, $($field,)+)
+            }
+        }
+    };
+
+    (@cmp_impl, $self:ident, $other:ident, $field:ident, ) => {
+        $self.$field.cmp(&$other.$field)
+    };
+
+    (@cmp_impl, $self:ident, $other:ident, $field:ident, $($remainder:ident,)+) => {
+        $self.$field.cmp(&$other.$field)
+            .then_with(|| $crate::__private__impl_eq_ord_by!(@cmp_impl, $self, $other, $($remainder,)+))
+    };
+}
+
+pub macro impl_eq_ord_by($($token:tt)+) {
+    $crate::__private__impl_eq_ord_by!($($token)+);
+}

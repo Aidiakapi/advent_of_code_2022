@@ -35,26 +35,10 @@ pub trait ParserCombiExt<'s>: Sized + Parser<'s> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct And<P1, P2>(P1, P2);
-#[derive(Debug, Clone, Copy)]
-pub struct Then<P1, P2>(P1, P2);
-#[derive(Debug, Clone, Copy)]
-pub struct Trailed<P1, P2>(P1, P2);
-
-#[derive(Debug, Clone, Copy)]
-pub struct Or<P1, P2>(P1, P2);
-
-#[derive(Debug, Clone, Copy)]
-pub struct Map<P, F>(P, F);
-#[derive(Debug, Clone, Copy)]
-pub struct MapRes<P, F>(P, F);
-
-#[derive(Debug, Clone, Copy)]
-pub struct Opt<P>(P);
-
 impl<'s, P1: Parser<'s>> ParserCombiExt<'s> for P1 {}
 
+#[derive(Debug, Clone, Copy)]
+pub struct And<P1, P2>(P1, P2);
 impl<'s, P1: Parser<'s>, P2: Parser<'s>> Parser<'s> for And<P1, P2> {
     type Output = (P1::Output, P2::Output);
 
@@ -65,6 +49,8 @@ impl<'s, P1: Parser<'s>, P2: Parser<'s>> Parser<'s> for And<P1, P2> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Then<P1, P2>(P1, P2);
 impl<'s, P1: Parser<'s>, P2: Parser<'s>> Parser<'s> for Then<P1, P2> {
     type Output = P2::Output;
 
@@ -74,6 +60,8 @@ impl<'s, P1: Parser<'s>, P2: Parser<'s>> Parser<'s> for Then<P1, P2> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Trailed<P1, P2>(P1, P2);
 impl<'s, P1: Parser<'s>, P2: Parser<'s>> Parser<'s> for Trailed<P1, P2> {
     type Output = P1::Output;
 
@@ -84,6 +72,8 @@ impl<'s, P1: Parser<'s>, P2: Parser<'s>> Parser<'s> for Trailed<P1, P2> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Or<P1, P2>(P1, P2);
 impl<'s, P1: Parser<'s>, P2: Parser<'s, Output = P1::Output>> Parser<'s> for Or<P1, P2> {
     type Output = P1::Output;
 
@@ -92,6 +82,8 @@ impl<'s, P1: Parser<'s>, P2: Parser<'s, Output = P1::Output>> Parser<'s> for Or<
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Map<P, F>(P, F);
 impl<'s, P: Parser<'s>, T: 's, F: Fn(P::Output) -> T> Parser<'s> for Map<P, F> {
     type Output = T;
 
@@ -102,7 +94,11 @@ impl<'s, P: Parser<'s>, T: 's, F: Fn(P::Output) -> T> Parser<'s> for Map<P, F> {
     }
 }
 
-impl<'s, P: Parser<'s>, T: 's, F: Fn(P::Output) -> Result<T, ParseError>> Parser<'s> for MapRes<P, F> {
+#[derive(Debug, Clone, Copy)]
+pub struct MapRes<P, F>(P, F);
+impl<'s, P: Parser<'s>, T: 's, F: Fn(P::Output) -> Result<T, ParseError>> Parser<'s>
+    for MapRes<P, F>
+{
     type Output = T;
 
     fn parse(&self, input: &'s [u8]) -> ParseResult<'s, T> {
@@ -115,6 +111,8 @@ impl<'s, P: Parser<'s>, T: 's, F: Fn(P::Output) -> Result<T, ParseError>> Parser
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Opt<P>(P);
 impl<'s, P: Parser<'s>> Parser<'s> for Opt<P> {
     type Output = Option<P::Output>;
 
