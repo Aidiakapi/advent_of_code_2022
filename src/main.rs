@@ -2,6 +2,7 @@
 #![feature(box_into_inner)]
 #![feature(byte_slice_trim_ascii)]
 #![feature(generic_const_exprs)]
+#![feature(get_many_mut)]
 #![feature(let_chains)]
 #![feature(never_type)]
 
@@ -34,4 +35,5 @@ framework::main!(
     day17,
     day18,
     day19,
+    day20,
 );
