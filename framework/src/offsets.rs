@@ -1,11 +1,45 @@
 use crate::vecs::Vec2;
 use num::{CheckedAdd, CheckedSub, One};
+use std::fmt::{self, Debug};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(transparent)]
 pub struct Offset {
     value: u8,
 }
+
+impl Debug for Offset {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Offset(")?;
+        let mut has_any_flags = false;
+        let mut write = |s: &'static str| {
+            if has_any_flags {
+                write!(f, ", ")?;
+            }
+            has_any_flags = true;
+            write!(f, "{s}")
+        };
+        if self.value & Offset::X_POS.value != 0 {
+            write("X+")?;
+        }
+        if self.value & Offset::X_NEG.value != 0 {
+            write("X-")?;
+        }
+        if self.value & Offset::Y_POS.value != 0 {
+            write("Y+")?;
+        }
+        if self.value & Offset::Y_NEG.value != 0 {
+            write("Y-")?;
+        }
+
+        if has_any_flags {
+            write!(f, ")")
+        } else {
+            write!(f, "NONE)")
+        }
+    }
+}
+
 impl Offset {
     pub const NONE: Offset = Offset { value: 0b0000 };
     pub const X_POS: Offset = Offset { value: 0b0001 };
@@ -58,6 +92,31 @@ impl Offset {
     }
     pub const fn has_y(self) -> bool {
         (self.value & 0b1010) != 0
+    }
+
+    pub const fn transpose(self) -> Offset {
+        Offset {
+            value: ((self.value << 1) & 0b1010) | ((self.value >> 1) & 0b0101),
+        }
+    }
+
+    pub const fn flip_x(self) -> Offset {
+        if self.has_x() {
+            Offset {
+                value: self.value ^ 0b0101,
+            }
+        } else {
+            self
+        }
+    }
+    pub const fn flip_y(self) -> Offset {
+        if self.has_y() {
+            Offset {
+                value: self.value ^ 0b1010,
+            }
+        } else {
+            self
+        }
     }
 
     pub const fn from_coordinate(value: Vec2<i32>) -> Option<(Offset, usize)> {

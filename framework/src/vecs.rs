@@ -1,10 +1,22 @@
-use num::{Integer, ToPrimitive};
+use num::{Integer, Signed, ToPrimitive};
 use std::fmt;
 
 macro_rules! substitute {
     ($name:ident, $($token:tt)+) => {
         $($token)+
     };
+}
+
+macro_rules! impl_cast_op {
+    ($name:ident { $($component:ident),+ }, [($t:ident, $f:ident), $($rest:tt)*]) => {
+        pub fn $f(self) -> $name<$t> {
+            $name {
+                $($component: self.$component.$f().unwrap(),)+
+            }
+        }
+        impl_cast_op!($name { $($component),+ }, [$($rest)*]);
+    };
+    ($name:ident { $($component:ident),+ }, []) => {};
 }
 
 macro_rules! impl_vec {
@@ -37,6 +49,14 @@ macro_rules! impl_vec {
         impl<T: Clone> From<T> for $name<T> {
             fn from(v: T) -> Self {
                 $name { $($component: v.clone(),)+ }
+            }
+        }
+
+        impl<T: Signed + Copy> $name<T> {
+            pub fn abs(self) -> Self {
+                Self {
+                    $($component: self.$component.abs(),)+
+                }
             }
         }
 
@@ -156,7 +176,7 @@ macro_rules! impl_vec {
         }
 
         impl<T: ToPrimitive> $name<T> {
-            impl_vec!(@cast_op, $name { $($component),+ }, [
+            impl_cast_op!($name { $($component),+ }, [
                 (u8, to_u8),
                 (u16, to_u16),
                 (u32, to_u32),
@@ -174,15 +194,6 @@ macro_rules! impl_vec {
             ]);
         }
     };
-    (@cast_op, $name:ident { $($component:ident),+ }, [($t:ident, $f:ident), $($rest:tt)*]) => {
-        pub fn $f(self) -> $name<$t> {
-            $name {
-                $($component: self.$component.$f().unwrap(),)+
-            }
-        }
-        impl_vec!(@cast_op, $name { $($component),+ }, [$($rest)*]);
-    };
-    (@cast_op, $name:ident { $($component:ident),+ }, []) => {};
 }
 
 auto trait NotSame {}
@@ -192,3 +203,19 @@ impl_vec!(Vec1, NotVec1, x, "({})");
 impl_vec!(Vec2, NotVec2, x, y, "({}, {})");
 impl_vec!(Vec3, NotVec3, x, y, z, "({}, {}, {})");
 impl_vec!(Vec4, NotVec4, x, y, z, w, "({}, {}, {}, {})");
+
+macro_rules! impl_transpose {
+    ($vec:ident, $($a:ident: $b:ident),+$(,)?) => {
+        impl<T> $vec<T> {
+            pub fn transpose(self) -> Self {
+                Self {
+                    $($a: self.$b,)+
+                }
+            }
+        }
+    };
+}
+
+impl_transpose!(Vec2, x: y, y: x);
+impl_transpose!(Vec3, x: z, y: y, z: x);
+impl_transpose!(Vec4, x: w, y: z, z: y, w: x);

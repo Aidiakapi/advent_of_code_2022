@@ -1,8 +1,8 @@
 use crate::iter::LendingIterator;
 use std::mem::MaybeUninit;
 
-pub fn init_array<T, E, const N: usize, F: FnMut(usize) -> Result<T, E>>(
-    mut f: F,
+pub fn init_array<T, E, const N: usize>(
+    mut f: impl FnMut(usize) -> Result<T, E>,
 ) -> Result<[T; N], E> {
     struct DropGuard<'r, T, const N: usize> {
         result: &'r mut [MaybeUninit<T>; N],
