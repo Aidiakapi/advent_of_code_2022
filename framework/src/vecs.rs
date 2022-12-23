@@ -27,7 +27,7 @@ macro_rules! impl_vec {
         }
 
         impl<T> $name<T> {
-            pub fn new($($component: T),+) -> Self {
+            pub const fn new($($component: T),+) -> Self {
                 $name { $($component,)+ }
             }
         }
