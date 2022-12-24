@@ -158,7 +158,7 @@ where
 }
 
 pub fn astar_path_cost<N, C>(
-    start: N,
+    starts: impl FnOnce(&mut Vec<(N, C)>),
     mut next: impl FnMut(&N, &mut Vec<(N, C)>),
     mut heuristic: impl FnMut(&N) -> C,
     mut is_target: impl FnMut(&N) -> bool,
@@ -190,14 +190,17 @@ where
         }
     }
 
-    let mut pending = BinaryHeap::new();
-    pending.push(Pending {
-        cost: C::default(),
-        cost_and_heuristic: heuristic(&start),
-        node: start,
-    });
-    let mut visited = HashMap::<N, C>::new();
     let mut next_nodes = Vec::new();
+    let mut pending = BinaryHeap::new();
+    starts(&mut next_nodes);
+    for (start, cost) in next_nodes.drain(..) {
+        pending.push(Pending {
+            cost,
+            cost_and_heuristic: cost + heuristic(&start),
+            node: start,
+        });
+    }
+    let mut visited = HashMap::<N, C>::new();
     while let Some(entry) = pending.pop() {
         if is_target(&entry.node) {
             return Some(entry.cost);

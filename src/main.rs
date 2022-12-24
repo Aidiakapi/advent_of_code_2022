@@ -5,6 +5,7 @@
 #![feature(get_many_mut)]
 #![feature(let_chains)]
 #![feature(never_type)]
+#![feature(stmt_expr_attributes)]
 
 #![allow(incomplete_features)]
 
@@ -39,4 +40,5 @@ framework::main!(
     day21,
     day22,
     day23,
+    day24,
 );
