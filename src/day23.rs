@@ -23,22 +23,18 @@ enum Cell {
 
 fn pts<const LIMITED: bool>(grid: &Grid) -> (Vec<Vec2<usize>>, u32) {
     let mut elves = Vec::new();
-    let mut grid = VecGrid::new(
-        grid.width() + ADDITIONAL_SIZE.x,
-        grid.height() + ADDITIONAL_SIZE.y,
-        |pos| {
-            if pos.x < OFFSET.x || pos.y < OFFSET.y {
-                return Cell::Empty(u32::MAX);
+    let mut grid = VecGrid::new(grid.size() + ADDITIONAL_SIZE, |pos| {
+        if pos.x < OFFSET.x || pos.y < OFFSET.y {
+            return Cell::Empty(u32::MAX);
+        }
+        match grid.get(pos - OFFSET) {
+            Some(true) => {
+                elves.push(pos);
+                Cell::Elf
             }
-            match grid.get(pos - OFFSET) {
-                Some(true) => {
-                    elves.push(pos);
-                    Cell::Elf
-                }
-                _ => Cell::Empty(u32::MAX),
-            }
-        },
-    );
+            _ => Cell::Empty(u32::MAX),
+        }
+    });
 
     const CHECK_DIRECTIONS: [[Offset; 3]; 4] = [
         [Offset::X_NEG_Y_NEG, Offset::Y_NEG, Offset::X_POS_Y_NEG],

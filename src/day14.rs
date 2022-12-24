@@ -23,7 +23,7 @@ fn simulate<const PADDING: usize>(
         max + Vec2::new(PADDING * 2, PADDING),
     );
     let size = max + 1 - min;
-    let mut grid = VecGrid::new(size.x, size.y, |_| Cell::Air);
+    let mut grid = VecGrid::new(size, |_| Cell::Air);
     for (from, to) in paths
         .iter()
         .flat_map(|path| path.iter().map(|&p| p - min).tuple_windows())

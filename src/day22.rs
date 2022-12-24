@@ -434,9 +434,9 @@ tests! {
     #[test]
     fn all_nets() {
         let transforms = [
-            |g: Grid| Grid::new(g.height(), g.width(), |p| g[p.transpose()]),
-            |g: Grid| Grid::new(g.width(), g.height(), |p| g[Vec2::new(g.width() - 1 - p.x, p.y)]),
-            |g: Grid| Grid::new(g.width(), g.height(), |p| g[Vec2::new(p.x, g.height() - 1 - p.y)]),
+            |g: Grid| Grid::new((g.height(), g.width()), |p| g[p.transpose()]),
+            |g: Grid| Grid::new(g.size(), |p| g[Vec2::new(g.width() - 1 - p.x, p.y)]),
+            |g: Grid| Grid::new(g.size(), |p| g[Vec2::new(p.x, g.height() - 1 - p.y)]),
         ];
 
         const N: usize = 4;
@@ -451,7 +451,7 @@ tests! {
             if transform & 0b100 != 0 {
                 grid = transforms[2](grid);
             }
-            let grid = &VecGrid::new(grid.width() * N, grid.height() * N, |c| grid[c / N]);
+            let grid = &VecGrid::new(grid.size() * N, |c| grid[c / N]);
             let faces = get_face_info::<N>(grid);
 
             for f in 0..faces.len() {

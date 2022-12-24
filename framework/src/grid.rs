@@ -23,8 +23,7 @@ pub trait GridBuilder<T> {
 
 #[derive(Debug, Clone)]
 pub struct VecGrid<T> {
-    width: usize,
-    height: usize,
+    size: Vec2,
     data: Vec<T>,
 }
 
@@ -41,38 +40,37 @@ impl<T> Grid<T> for VecGrid<T> {
 }
 
 impl<T> VecGrid<T> {
-    pub fn new(
-        width: usize,
-        height: usize,
-        mut initializer: impl FnMut(Vec2) -> T,
-    ) -> VecGrid<T> {
-        assert!(width > 0);
-        assert!(height > 0);
-        let mut data = Vec::with_capacity(width * height);
-        for y in 0..height {
-            for x in 0..width {
-                data.push(initializer(Vec2::new(x, y)));
+    pub fn new(size: impl Into<Vec2>, initializer: impl FnMut(Vec2) -> T) -> VecGrid<T> {
+        fn internal<T>(size: Vec2, mut initializer: impl FnMut(Vec2) -> T) -> VecGrid<T> {
+            assert!(size.x > 0);
+            assert!(size.y > 0);
+            let mut data = Vec::with_capacity(size.x * size.y);
+            for y in 0..size.y {
+                for x in 0..size.x {
+                    data.push(initializer(Vec2::new(x, y)));
+                }
             }
+            VecGrid { size, data }
         }
-        VecGrid {
-            width,
-            height,
-            data,
-        }
+        internal(size.into(), initializer)
+    }
+
+    pub fn size(&self) -> Vec2 {
+        self.size
     }
 
     pub fn width(&self) -> usize {
-        self.width
+        self.size.x
     }
 
     pub fn height(&self) -> usize {
-        self.height
+        self.size.y
     }
 
     #[inline]
     pub fn get<V: Into<Vec2>>(&self, index: V) -> Option<&T> {
         let index = index.into();
-        if index.x < self.width && index.y < self.height {
+        if index.x < self.size.x && index.y < self.size.y {
             unsafe { Some(self.get_unchecked(index)) }
         } else {
             None
@@ -82,7 +80,7 @@ impl<T> VecGrid<T> {
     #[inline]
     pub fn get_mut<V: Into<Vec2>>(&mut self, index: V) -> Option<&mut T> {
         let index = index.into();
-        if index.x < self.width && index.y < self.height {
+        if index.x < self.size.x && index.y < self.size.y {
             unsafe { Some(self.get_unchecked_mut(index)) }
         } else {
             None
@@ -93,14 +91,14 @@ impl<T> VecGrid<T> {
     /// Calling this method with an out-of-bounds index is undefined behavior even if the resulting reference is not used.
     #[inline]
     pub unsafe fn get_unchecked(&self, index: Vec2) -> &T {
-        unsafe { self.data.get_unchecked(index.y * self.width + index.x) }
+        unsafe { self.data.get_unchecked(index.y * self.size.x + index.x) }
     }
 
     /// # Safety
     /// Calling this method with an out-of-bounds index is undefined behavior even if the resulting reference is not used.
     #[inline]
     pub unsafe fn get_unchecked_mut(&mut self, index: Vec2) -> &mut T {
-        unsafe { self.data.get_unchecked_mut(index.y * self.width + index.x) }
+        unsafe { self.data.get_unchecked_mut(index.y * self.size.x + index.x) }
     }
 
     #[inline]
@@ -117,8 +115,7 @@ impl<T> VecGrid<T> {
     pub fn iter(&self) -> VecGridIter<'_, T> {
         VecGridIter {
             data: self.data.iter(),
-            width: self.width,
-            height: self.height,
+            size: self.size,
             next: Vec2::zero(),
         }
     }
@@ -127,19 +124,18 @@ impl<T> VecGrid<T> {
     pub fn iter_mut(&mut self) -> VecGridIterMut<'_, T> {
         VecGridIterMut {
             data: self.data.iter_mut(),
-            width: self.width,
-            height: self.height,
+            size: self.size,
             next: Vec2::zero(),
         }
     }
 
     pub fn stringify(&self, mut to_char: impl FnMut(&T) -> char) -> String {
-        let mut str = String::with_capacity((self.width + 1) * self.height - 1);
-        for y in 0..self.height {
+        let mut str = String::with_capacity((self.size.x + 1) * self.size.y - 1);
+        for y in 0..self.size.y {
             if y != 0 {
                 str.push('\n')
             }
-            for x in 0..self.width {
+            for x in 0..self.size.x {
                 let c = unsafe { self.get_unchecked((x, y).into()) };
                 str.push(to_char(c));
             }
@@ -154,18 +150,18 @@ impl<T, V: Into<Vec2>> Index<V> for VecGrid<T> {
     #[inline]
     fn index(&self, index: V) -> &Self::Output {
         let index = index.into();
-        assert!(index.x < self.width);
-        assert!(index.y < self.height);
-        unsafe { self.data.get_unchecked(index.y * self.width + index.x) }
+        assert!(index.x < self.size.x);
+        assert!(index.y < self.size.y);
+        unsafe { self.data.get_unchecked(index.y * self.size.x + index.x) }
     }
 }
 impl<T, V: Into<Vec2>> IndexMut<V> for VecGrid<T> {
     #[inline]
     fn index_mut(&mut self, index: V) -> &mut Self::Output {
         let index = index.into();
-        assert!(index.x < self.width);
-        assert!(index.y < self.height);
-        unsafe { self.data.get_unchecked_mut(index.y * self.width + index.x) }
+        assert!(index.x < self.size.x);
+        assert!(index.y < self.size.y);
+        unsafe { self.data.get_unchecked_mut(index.y * self.size.x + index.x) }
     }
 }
 
@@ -217,8 +213,7 @@ impl<T> GridBuilder<T> for VecGridBuilder<T> {
         debug_assert!(self.data.len() % width == 0);
         let height = self.data.len() / width;
         Ok(VecGrid {
-            width,
-            height,
+            size: Vec2::new(width, height),
             data: self.data,
         })
     }
@@ -231,8 +226,7 @@ impl<T> IntoIterator for VecGrid<T> {
     fn into_iter(self) -> Self::IntoIter {
         VecGridIntoIter {
             data: self.data.into_iter(),
-            width: self.width,
-            height: self.height,
+            size: self.size,
             next: Vec2::zero(),
         }
     }
@@ -240,34 +234,31 @@ impl<T> IntoIterator for VecGrid<T> {
 
 pub struct VecGridIntoIter<T> {
     data: <Vec<T> as IntoIterator>::IntoIter,
-    width: usize,
-    height: usize,
+    size: Vec2,
     next: Vec2,
 }
 
 pub struct VecGridIter<'g, T> {
     data: Iter<'g, T>,
-    width: usize,
-    height: usize,
+    size: Vec2,
     next: Vec2,
 }
 
 pub struct VecGridIterMut<'g, T> {
     data: IterMut<'g, T>,
-    width: usize,
-    height: usize,
+    size: Vec2,
     next: Vec2,
 }
 
 macro impl_iter() {
     fn next(&mut self) -> Option<Self::Item> {
         let point = self.next;
-        if point.y >= self.height {
+        if point.y >= self.size.y {
             return None;
         }
         let item = unsafe { self.data.next().unwrap_unchecked() };
         self.next.x += 1;
-        if self.next.x >= self.width {
+        if self.next.x >= self.size.x {
             self.next.x = 0;
             self.next.y += 1;
         }
