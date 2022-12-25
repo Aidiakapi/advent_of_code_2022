@@ -25,13 +25,16 @@ macro_rules! main {
                 .filter_map(|v| v.parse::<u32>().ok())
                 .collect();
 
+            let mut duration = std::time::Duration::ZERO;
             let mut inputs = Inputs::new();
             $({
                 if included_days.is_empty() || included_days.contains(&$day::DayMetadata::number()) {
-                    $day::DayMetadata::execute(&mut inputs)?;
+                    $day::DayMetadata::execute(&mut inputs, &mut duration)?;
                 }
             })*
+            let after = std::time::Instant::now();
             println!();
+            println!("{:?}", duration);
             Ok(())
         }
     };
@@ -44,7 +47,7 @@ use super::prelude::*;
 pub struct DayMetadata;
 impl DayMetadata {
     pub fn number() -> u32 { $day_nr }
-    pub fn execute(inputs: &mut $crate::runner::Inputs) -> $crate::runner::Result<()> {
+    pub fn execute(inputs: &mut $crate::runner::Inputs, duration: &mut std::time::Duration) -> $crate::runner::Result<()> {
         use $crate::runner::*;
         const OUTPUT_WIDTH: usize = 40;
         print!(
@@ -54,13 +57,18 @@ impl DayMetadata {
         );
 
         let input = inputs.get($day_nr)?;
+        let before = std::time::Instant::now();
         let parsed = $parse_fn(&input)?;
+        *duration += before.elapsed();
         $({
             let part_name = stringify!($part_fn);
             let remaining_space = OUTPUT_WIDTH.checked_sub(part_name.len() + 1).unwrap_or(0);
             print!(" {} {} ", "::".magenta(), part_name.bright_yellow());
             _ = std::io::stdout().flush();
-            let result: ColoredOutput = IntoResult::into_result($part_fn(&parsed))?.into();
+            let before = std::time::Instant::now();
+            let result = $part_fn(&parsed);
+            *duration += before.elapsed();
+            let result: ColoredOutput = IntoResult::into_result(result)?.into();
             let str_len = result.value().len() - result.control_count();
             let remaining_space = remaining_space.checked_sub(str_len).unwrap_or(0);
             for _ in 0..remaining_space {
