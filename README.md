@@ -1,5 +1,7 @@
 # Advent of Code 2022
 
+[![Rust](https://github.com/Aidiakapi/advent_of_code_2022/actions/workflows/rust.yml/badge.svg)](https://github.com/Aidiakapi/advent_of_code_2022/actions/workflows/rust.yml)
+
 My solutions for Advent of Code 2022. Written in Rust 🦀.
 
 - Clone the repository.
