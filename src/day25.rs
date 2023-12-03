@@ -47,8 +47,8 @@ fn pt1(input: &[&[u8]]) -> AString {
     int_to_str(input.iter().cloned().map(str_to_int).sum::<i64>())
 }
 
-fn pt2(_: &[&[u8]]) -> &'static str {
-    "gg"
+fn pt2(_: &[&[u8]]) -> &'static AStr {
+    b"gg"
 }
 
 fn parse(input: &[u8]) -> Result<Vec<&[u8]>> {

@@ -5,7 +5,7 @@
 My solutions for Advent of Code 2022. Written in Rust 🦀.
 
 - Clone the repository.
-- Make sure you have a nightly version of Rust (written around December 2022).
+- Make sure you have a nightly version of Rust around December 2023.
 - `cargo run --release` for all days, `cargo run --release -- NN` for a specific
   day.
 - Want your own inputs?

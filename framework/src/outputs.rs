@@ -1,9 +1,6 @@
 use crate::astr::*;
 use colored::Colorize;
-use std::{
-    fmt::{self, Write},
-    ops::Deref,
-};
+use std::fmt::{self, Write};
 
 #[derive(Debug)]
 pub struct ColoredOutput {
@@ -27,9 +24,12 @@ impl fmt::Display for ColoredOutput {
 }
 
 auto trait NotIntoColorOutput {}
+#[allow(suspicious_auto_trait_impls)]
 impl !NotIntoColorOutput for ColoredOutput {}
+#[allow(suspicious_auto_trait_impls)]
 impl !NotIntoColorOutput for AString {}
-impl<'s> !NotIntoColorOutput for &'s AStr {}
+#[allow(suspicious_auto_trait_impls)]
+impl !NotIntoColorOutput for &'static AStr {}
 
 impl<T: fmt::Display + NotIntoColorOutput> From<T> for ColoredOutput {
     fn from(value: T) -> Self {
@@ -57,7 +57,15 @@ impl From<AString> for ColoredOutput {
 
 impl<'s> From<&'s AStr> for ColoredOutput {
     fn from(s: &'s AStr) -> Self {
-        String::from_utf8_lossy(s).deref().into()
+        let value = String::from_utf8_lossy(s);
+
+        let before_style_len = value.len();
+        let value = value.white().bold().to_string();
+        let control_count = value.len() - before_style_len;
+        ColoredOutput {
+            value,
+            control_count,
+        }
     }
 }
 

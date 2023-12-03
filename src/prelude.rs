@@ -1,2 +1,2 @@
 pub use framework::prelude::*;
-pub use itertools::{Itertools, PeekingNext};
+pub use itertools::Itertools;

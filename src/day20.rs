@@ -43,7 +43,7 @@ fn insert_into_list(list: &mut [Entry], index: usize, after: usize) {
     let insertion_point = &mut list[after];
     let next_index = insertion_point.next;
     insertion_point.next = index;
-    let mut entry = &mut list[index];
+    let entry = &mut list[index];
     entry.prev = after;
     entry.next = next_index;
     list[next_index].prev = index;
